@@ -20,4 +20,15 @@
 
 */
 
-module.exports = require("./processor");
+var Processor = require('./processor').Processor;
+var fs = require('fs');
+
+exports.process = function (path, rootPath, libraryPath, continuation) {
+    var processor = new Processor();
+    processor.setRootPath(rootPath);
+    processor.setLibraryPath(libraryPath);
+    fs.readFile(path, 'utf8',
+        function (error, text) {
+            processor.processText(text, path, continuation);
+        });
+};

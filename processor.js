@@ -24,19 +24,13 @@ var sys = require('sys');
 var fs = require('fs');
 var pathutil = require('path');
 var ejs = require('ejs');
+var StreamStream = require('ejs/util').StreamStream;
 
 function Processor() {
     this._rootPath = null;
     this._libraryPath = null;
     this._workingPath = null;
     this._sandbox = {};
-};
-Processor.process = function (path, rootPath, libraryPath) {
-    var processor = new this();
-    processor.setRootPath(rootPath);
-    processor.setLibraryPath(libraryPath);
-    var text = fs.readFileSync(path, 'utf8');
-    return processor.processTextSync(text, path).content
 };
 Processor.prototype = new function () {
     this.setRootPath = function (path) {
@@ -57,66 +51,55 @@ Processor.prototype = new function () {
         return pathutil.normalize(absolutePath);
     };
 
-    this.processFileSync = function (filename) {
-        filename = this.resolvePath(filename);
-        var text = this._readFileSync(filename);
-        return this.processTextSync(text, filename);
-    };
-
-    this.processTextSync = function (text, filename) {
-        var output = this._process(text, filename);
-        return {content: output};
-    };
-
-    this._readFileSync = function (filename) {
-        var text = fs.readFileSync(filename, 'utf8');
-        return text;
-    };
-
-    this._process = function (text, filename) {
-        var renderOperation = [];
-        function echo(value) {
-            if (value !== null && value !== undefined) {
-                renderOperation.push(value.toString());
-            }
-        }
+    this.processFile = function (filename, callback) {
         var self = this;
-        function include(path) {
-            var result = self.processFileSync(path);
-            renderOperation.push(result.content);
-        }
-        function includeVerbatim(path) {
-            var text = self._readFileSync(self.resolvePath(path), 'utf8');
-            renderOperation.push(text);
-        }
+        filename = this.resolvePath(filename);
+        fs.readFile(filename, 'utf8',
+            function (error, text) {
+                self.processText(text, filename, callback);
+            });
+    };
 
-        var code = ejs.compile(text);
-        var environment = {
-            'echo': echo,
-            'include': include,
-            'includeVerbatim': includeVerbatim,
-            '__processor': this
-            };
+    this.processText = function (text, filename, callback) {
+        this._process(text, filename, callback);
+    };
 
-        // Archive environment
-        var originalEnvironment = {};
-        for (var key in environment) {
-            originalEnvironment[key] = this._sandbox[key];
-            this._sandbox[key] = environment[key];
+    this._process = function (text, filename, callback) {
+        var template = new ejs.Template(text, filename);
+        var self = this;
+
+        function include(renderOperation, path) {
+            var stream = new StreamStream();
+            self.processFile(path,
+                function (text) {
+                    stream.write(text);
+                    stream.end();
+                });
+            renderOperation.write(stream);
         }
+        function includeVerbatim(renderOperation, path) {
+            var stream = new StreamStream();
+            fs.readFile(self.resolvePath(path), 'utf8',
+                function (error, text) {
+                    stream.write(text);
+                    stream.end();
+                });
+            renderOperation.write(stream);
+        };
+
         var originalWorkingPath = this._workingPath;
         this._workingPath = pathutil.dirname(filename);
 
-        Script = process.binding('evals').Script;
-        Script.runInNewContext(code, this._sandbox, filename);
-
-        // Restore environment
-        for (var key in originalEnvironment) {
-            this._sandbox[key] = originalEnvironment[key];
-        }
-        this._workingPath = originalWorkingPath;
-
-        return renderOperation.join('');
+        template.executeBuffered(
+            {'__processor': this},
+            {
+            'include': include,
+            'includeVerbatim': includeVerbatim
+            },
+            function (result) {
+                self._workingPath = originalWorkingPath;
+                callback(result);
+            });
     };
 }();
 
