@@ -21,12 +21,13 @@
 */
 
 var Processor = require('./processor').Processor;
+var Includer = require('./directives').Includer;
 var fs = require('fs');
 
 exports.process = function (path, rootPath, libraryPath, continuation) {
     var processor = new Processor();
-    processor.setRootPath(rootPath);
-    processor.setLibraryPath(libraryPath);
+    var includer = new Includer(rootPath, libraryPath);
+    includer.addDirectivesToProcessor(processor);
     fs.readFile(path, 'utf8',
         function (error, text) {
             processor.processText(text, path, function (renderOperation) {

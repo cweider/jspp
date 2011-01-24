@@ -21,85 +21,39 @@
 */
 
 var sys = require('sys');
-var fs = require('fs');
-var pathutil = require('path');
 var ejs = require('ejs');
 var StreamStream = require('ejs/util').StreamStream;
 
 function Processor() {
-    this._rootPath = null;
-    this._libraryPath = null;
-    this._workingPath = null;
     this._sandbox = {};
+    this._directives = {};
 };
 Processor.prototype = new function () {
-    this.setRootPath = function (path) {
-        this._rootPath = fs.realpathSync(path);
+    this.addDirectives = function (directives) {
+      for (var directive in directives) {
+          this.addDirective(directive, directives[directive]);
+      }
     };
-    this.setLibraryPath = function (path) {
-        this._libraryPath = fs.realpathSync(path);
-    };
-    this.resolvePath = function (path) {
-        var absolutePath;
-        if (path.charAt(0) == '/') {
-            absolutePath = pathutil.join(this._rootPath, path);
-        } else if (path.charAt(0) == '.') {
-            absolutePath = pathutil.join(this._workingPath, path);
-        } else {
-            absolutePath = pathutil.join(this._libraryPath, path);
-        }
-        return pathutil.normalize(absolutePath);
-    };
-
-    this.processFile = function (filename, callback) {
+    this.addDirective = function (directive, func) {
         var self = this;
-        filename = this.resolvePath(filename);
-        fs.readFile(filename, 'utf8',
-            function (error, text) {
-                self.processText(text, filename, callback);
-            });
+        this._directives[directive] = func;
     };
 
     this.processText = function (text, filename, callback) {
-        this._process(text, filename, callback);
-    };
-
-    this._process = function (text, filename, callback) {
         var template = new ejs.Template(text, filename);
         var self = this;
-
-        function include(renderOperation, path) {
-            var stream = new StreamStream();
-            self.processFile(path,
-                function (text) {
-                    stream.write(text);
-                    stream.end();
-                });
-            renderOperation.write(stream);
+        var directives = {};
+        for (var directive in this._directives) {
+            directives[directive] = function (func) {
+                return function () {
+                    var args = Array.prototype.slice.call(arguments, 0);
+                    args.unshift(filename);
+                    return func.apply(self, args)
+                };
+            }(this._directives[directive]);
         }
-        function includeVerbatim(renderOperation, path) {
-            var stream = new StreamStream();
-            fs.readFile(self.resolvePath(path), 'utf8',
-                function (error, text) {
-                    stream.write(text);
-                    stream.end();
-                });
-            renderOperation.write(stream);
-        };
 
-        var originalWorkingPath = this._workingPath;
-        this._workingPath = pathutil.dirname(filename);
-
-        template.execute(
-            {'__processor': this},
-            {
-            'include': include,
-            'includeVerbatim': includeVerbatim
-            },
-            function (renderOperation) {
-                callback(renderOperation);
-                renderOperation.on('end', function () {self._workingPath = originalWorkingPath;});
-            });
+        template.execute(this._sandbox, directives, callback);
     };
 }();
 
