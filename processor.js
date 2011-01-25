@@ -90,15 +90,15 @@ Processor.prototype = new function () {
         var originalWorkingPath = this._workingPath;
         this._workingPath = pathutil.dirname(filename);
 
-        template.executeBuffered(
+        template.execute(
             {'__processor': this},
             {
             'include': include,
             'includeVerbatim': includeVerbatim
             },
-            function (result) {
-                self._workingPath = originalWorkingPath;
-                callback(result);
+            function (renderOperation) {
+                callback(renderOperation);
+                renderOperation.on('end', function () {self._workingPath = originalWorkingPath;});
             });
     };
 }();

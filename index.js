@@ -29,6 +29,14 @@ exports.process = function (path, rootPath, libraryPath, continuation) {
     processor.setLibraryPath(libraryPath);
     fs.readFile(path, 'utf8',
         function (error, text) {
-            processor.processText(text, path, continuation);
+            processor.processText(text, path, function (renderOperation) {
+              var buffer = [];
+              renderOperation.on('data', function (chunk) {
+                buffer.push(chunk);
+              });
+              renderOperation.on('end', function () {
+                continuation(buffer.join(''));
+              });
+            });
         });
 };
