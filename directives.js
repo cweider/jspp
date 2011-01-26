@@ -48,6 +48,7 @@ var resolvePath = function (path, workingPath, rootPath, libraryPath) {
 var Includer = function (rootPath, libraryPath) {
     this._rootPath = rootPath;
     this._libraryPath = libraryPath;
+    this._includedPaths = {};
 };
 
 Includer.prototype = new function () {
@@ -68,6 +69,12 @@ Includer.prototype = new function () {
     };
     this.include = function (processor, filename, renderOperation, path) {
         var path = resolvePath(path, pathutil.dirname(filename), this._rootPath, this._libraryPath);
+        if (this._includedPaths[path]) {
+            return;
+        } else {
+            this._includedPaths[path] = true;
+        }
+
         var stream = new StreamStream();
         renderOperation.write(stream);
         fs.readFile(path, 'utf8', function (error, text) {
@@ -80,6 +87,12 @@ Includer.prototype = new function () {
     };
     this.includeVerbatim = function (processor, filename, renderOperation, path) {
         var path = resolvePath(path, pathutil.dirname(filename), this._rootPath, this._libraryPath);
+        if (this._includedPaths[path]) {
+            return;
+        } else {
+            this._includedPaths[path] = true;
+        }
+
         var stream = new StreamStream();
         renderOperation.write(stream);
         fs.readFile(path, 'utf8',
