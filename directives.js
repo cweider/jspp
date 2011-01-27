@@ -45,6 +45,9 @@ var resolvePath = function (path, workingPath, rootPath, libraryPath) {
     return pathutil.normalize(absolutePath);
 };
 
+exports.normalizePath = normalizePath;
+exports.resolvePath = resolvePath;
+
 var Includer = function (rootPath, libraryPath) {
     this._rootPath = rootPath;
     this._libraryPath = libraryPath;
@@ -103,4 +106,39 @@ Includer.prototype = new function () {
     };
 }();
 
+var Importer = function (rootPath, libraryPath) {
+    this._dependencies = [];
+    this._dependenciesSet = {};
+};
+
+Importer.prototype = new function () {
+    this.addDirectivesToProcessor = function (processor) {
+        var self = this;
+        processor.addDirectives({
+            'importModule': function () {
+                var args = Array.prototype.slice.call(arguments, 0);
+                args.unshift(this);
+                return self.importModule.apply(self, args)
+            },
+            'importModuleAs': function () {
+                var args = Array.prototype.slice.call(arguments, 0);
+                args.unshift(this);
+                return self.importModuleAs.apply(self, args)
+            }
+        });
+    };
+    this.importModuleAs = function (processor, filename, renderOperation, path, name) {
+        var normalizedPath = normalizePath(path, pathutil.dirname(filename), this._rootPath, this._libraryPath);
+        if (!this._dependenciesSet[normalizedPath]) {
+            this._dependenciesSet[normalizedPath] = true;
+            this._dependencies.push(normalizedPath);
+        }
+        renderOperation.write('var ' + name + ' = require(' + JSON.stringify(path) + ');\n');
+    };
+    this.importModule = function (processor, filename, renderOperation, path) {
+        this.importModuleAs(renderOperation, path, path.match(/[^\/]+$/)[0]);
+    };
+}();
+
 exports.Includer = Includer;
+exports.Importer = Importer;
