@@ -26,18 +26,21 @@ var pathutil = require('path');
 var ejs = require('ejs');
 var StreamStream = require('ejs/util').StreamStream;
 
-var normalizePath = function (path, relativeTo) {
-    if (path.charAt(0) == '.') {
-        return pathutil.normalize(pathutil.join(relativeTo || this._workingPath || '/', path));
+var rootedPath = function (path, relativeTo) {
+    var absolutePath;
+    if (path.charAt(0) == '/') {
+        absolutePath = pathutil.join(rootPath, path);
+    } else if (path.charAt(0) == '.' && (path.charAt(1) == '/' || (path.charAt(1) == '.' && path.charAt(2) == '/'))) {
+        absolutePath = pathutil.join(relativeTo || '/', path);
     } else {
-        return path;
+        absolutePath = pathutil.join(libraryPath, path);
     }
 };
 var resolvePath = function (path, workingPath, rootPath, libraryPath) {
     var absolutePath;
     if (path.charAt(0) == '/') {
         absolutePath = pathutil.join(rootPath, path);
-    } else if (path.charAt(0) == '.') {
+    } else if (path.charAt(0) == '.' && (path.charAt(1) == '/' || (path.charAt(1) == '.' && path.charAt(2) == '/'))) {
         absolutePath = pathutil.join(workingPath || rootPath, path);
     } else {
         absolutePath = pathutil.join(libraryPath, path);
@@ -45,7 +48,7 @@ var resolvePath = function (path, workingPath, rootPath, libraryPath) {
     return pathutil.normalize(absolutePath);
 };
 
-exports.normalizePath = normalizePath;
+exports.rootedPath = rootedPath;
 exports.resolvePath = resolvePath;
 
 var Includer = function (rootPath, libraryPath) {
@@ -108,7 +111,6 @@ Includer.prototype = new function () {
 
 var Importer = function (rootPath, libraryPath) {
     this._dependencies = [];
-    this._dependenciesSet = {};
 };
 
 Importer.prototype = new function () {
@@ -128,11 +130,7 @@ Importer.prototype = new function () {
         });
     };
     this.importModuleAs = function (processor, filename, renderOperation, path, name) {
-        var normalizedPath = normalizePath(path, pathutil.dirname(filename), this._rootPath, this._libraryPath);
-        if (!this._dependenciesSet[normalizedPath]) {
-            this._dependenciesSet[normalizedPath] = true;
-            this._dependencies.push(normalizedPath);
-        }
+        this._dependencies.push(path);
         renderOperation.write('var ' + name + ' = require(' + JSON.stringify(path) + ');\n');
     };
     this.importModule = function (processor, filename, renderOperation, path) {
