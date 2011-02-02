@@ -1,7 +1,17 @@
 var __MODULES__ = __MODULES__ || {};
 var require = (function () {
     var _require = function (absolutePath) {
-        var module = __MODULES__[absolutePath];
+        var module;
+        var suffixes = ['', '.js', '/index.js'];
+        for (var i = 0, ii = suffixes.length; i < ii && !module; i++) {
+            var suffix = suffixes[i];
+            var _path = absolutePath + suffix;
+            module = __MODULES__[_path];
+        }
+
+        if (!module) {
+	        throw new Error("The module at \"" + absolutePath + "\" does not exist.");
+        }
 
         // If it's a function then it hasn't been exported yet. Run function and
         //  then replace with exports result.
@@ -11,8 +21,6 @@ var require = (function () {
             module.call(_module, _requireRelativeTo(absolutePath.replace(/[^\/]+$/,'')), _exports, _module);
             module = _exports;
             __MODULES__[absolutePath] = module;
-        } else if (!module) {
-          throw new Error("The module at \"" + absolutePath + "\" does not exist.");
         }
 
         return module;
@@ -73,53 +81,3 @@ var declareModules = function (pathModuleMap) {
         }
     }
 };
-
-declareModules({
-  "/lib/ui/button": function (require, exports, module) {
-    var Control = require("./control");
-    var Util = require("../util/util");
-    console.log('MODULE RUN: BUTTON');
-
-    exports.button1 = 'button1';
-    exports.button2 = 'button2';
-    exports.Control = Control;
-    },
-  "/lib/ui/control": function (require, exports, module) {
-    var Util = require("../util/util");
-    console.log('MODULE RUN: CONTROL');
-
-    exports.i_am_a_control = true;
-    exports.utils = Util;
-    },
-  "/lib/util/util": function (require, exports, module) {
-    console.log('MODULE RUN: UTIL');
-
-    exports.escapeHTML = function () {};
-    exports.escapeHTMLAttribute = function () {};
-    exports.importantURL = 'http://example.com/';
-    },
-  "/lib/ui/ext/special_button": function (require, exports, module) {
-    var Control = require("../control");
-    var Button = require("../../ui/button");
-    var Util = require("/lib/util/util");
-    console.log('MODULE RUN: SPECIAL BUTTON');
-
-    exports.Button = Button;
-    exports.Control = Control;
-    exports.Util = Util;
-    }
-});
-
-var Button = require("/lib/ui/button");
-var Util = require("/lib/util/util");
-var SpecialButton = require("/lib/ui/ext/special_button");
-
-console.log('Button is:');
-console.dir(Button);
-
-console.log('SpecialButton is:');
-console.dir(SpecialButton);
-
-console.log('Util is:');
-console.dir(Util);
-

@@ -172,7 +172,4 @@ Modulizer.prototype = new function () {
     };
 };
 
-
-var m = new Modulizer('./tests/', './tests/');
-m.importModule('root.js');
-m.ready(function () {console.log(require('util').inspect(m._modules))});
+exports.Modulizer = Modulizer;
