@@ -85,7 +85,8 @@ Modulizer.prototype = new function () {
                 self.canonicalPath(dependency[0],
                     function (error, path) {
                         if (error) {
-                            callback(error)
+                            // Should do something here.
+                            inOrderDepImport();
                         } else {
                         	var module = {path: path};
                             module.pending = true;
