@@ -15,9 +15,6 @@ var Modulizer = function (rootPath, libraryPath) {
 };
 
 Modulizer.prototype = new function () {
-    this.normalizePath = function (path, relativeTo) {
-        return require('../directives').normalizePath(path, relativeTo, this._rootPath, this._libraryPath);
-    };
     this.resolvePath = function (path, relativeTo) {
         return require('../directives').resolvePath(path, relativeTo, this._rootPath, this._libraryPath);
     };
@@ -130,8 +127,7 @@ Modulizer.prototype = new function () {
                 if (error) {
                     callback(error)
                 } else {
-                    var normalizedPath = self.normalizePath(path);
-                    processor.processText(text, normalizedPath,
+                    processor.processText(text, path,
                         function (renderOperation) {
                             var buffer = "";
                             chunks = 0;
