@@ -26,16 +26,6 @@ var pathutil = require('path');
 var ejs = require('ejs');
 var StreamStream = require('ejs/util').StreamStream;
 
-var rootedPath = function (path, relativeTo) {
-    var absolutePath;
-    if (path.charAt(0) == '/') {
-        absolutePath = pathutil.join(rootPath, path);
-    } else if (path.charAt(0) == '.' && (path.charAt(1) == '/' || (path.charAt(1) == '.' && path.charAt(2) == '/'))) {
-        absolutePath = pathutil.join(relativeTo || '/', path);
-    } else {
-        absolutePath = pathutil.join(libraryPath, path);
-    }
-};
 var resolvePath = function (path, workingPath, rootPath, libraryPath) {
     var absolutePath;
     if (path.charAt(0) == '/') {
@@ -48,7 +38,6 @@ var resolvePath = function (path, workingPath, rootPath, libraryPath) {
     return pathutil.normalize(absolutePath);
 };
 
-exports.rootedPath = rootedPath;
 exports.resolvePath = resolvePath;
 
 var Includer = function (rootPath, libraryPath) {
