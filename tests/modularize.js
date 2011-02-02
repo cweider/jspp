@@ -18,6 +18,13 @@ Modulizer.prototype = new function () {
     this.resolvePath = function (path, relativeTo) {
         return require('../directives').resolvePath(path, relativeTo, this._rootPath, this._libraryPath);
     };
+    this.rootedPath = function (path, relativeTo) {
+        if (path.charAt(0) == '.' && (path.charAt(1) == '/' || (path.charAt(1) == '.' && path.charAt(2) == '/'))) {
+             return pathutil.join(relativeTo || '/', path);
+        } else {
+            return path
+        }
+    };
     this.canonicalPath = function (path, callback) {
         var suffixes = ['', '.js', '/index.js'];
         var self = this;
@@ -65,7 +72,7 @@ Modulizer.prototype = new function () {
     };
     this._importRootModule = function (path) {
         this._importing = true;
-        var dependencies = [[path, null]];
+        var dependencies = [{path: path, parent: null}];
         var self = this;
 
         var inOrderDepImport = function () {
@@ -74,31 +81,39 @@ Modulizer.prototype = new function () {
                 self._importing = false;
                 return self._rootModuleImported();
             }
-            var module = self.moduleAtPath(dependency[0]);
+            var importPath = self.rootedPath(dependency.path, dependency.parent && pathutil.dirname(dependency.parent.path));
+            var module = self.moduleAtPath(importPath);
             if (module) {
-            	if (module.pending) {
-                	// Circular import happened here.
+               if (module.pending) {
+                   // Circular import happened here.
                 }
-                dependency[1] && module.dependencyOf.push(dependency[1].path);
+                dependency.parent && module.dependencyOf.push(dependency.parent.path);
                 inOrderDepImport();
             } else {
-                self.canonicalPath(dependency[0],
+                self.canonicalPath(importPath,
                     function (error, path) {
                         if (error) {
                             // Should do something here.
                             inOrderDepImport();
                         } else {
-                        	var module = {path: path};
+                            var module = {};
+                            module.path = path;
                             module.pending = true;
-                            module.dependencyOf = dependency[1] ? [dependency[1].path] : [];
+                            module.dependencies = [];
+                            module.dependencyOf = [];
+
+                            if (dependency.parent) {
+                                module.dependencyOf.push(dependency.parent.path)
+                                dependency.parent.dependencies.push(module.path);
+                            }
+
                             self._modules[path] = module;
                             self._processModule(path,
                                 function (error, result) {
                                     module.pending = false;
                                     module.code = result.code;
-                                    module.dependencies = result.dependencies;
-                                    for (var i = 0, ii = module.dependencies.length; i < ii; i++) {
-                                        dependencies.push([module.dependencies[i], module]);
+                                    for (var i = 0, ii = result.dependencies.length; i < ii; i++) {
+                                        dependencies.push({path:result.dependencies[i], parent: module});
                                     }
                                     inOrderDepImport();
                                 });
