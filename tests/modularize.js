@@ -26,8 +26,8 @@ Modulizer.prototype = new function () {
                 var suffix = suffixes[i];
                 var _path = path + suffix;
                 _path = self.resolvePath(_path);
-                pathutil.exists(_path, function (exists) {
-                    if (exists) {
+                fs.stat(_path, function (error, stats) {
+                    if (!error && stats.isFile()) {
                         callback(null, path + suffix);
                     } else {
                         search(suffixes, i+1);
