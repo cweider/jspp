@@ -9,7 +9,7 @@ m.ready(function () {
 
     packedCode = [];
     packedCode.push(kernel);
-    packedCode.push('declareModules({');
+    packedCode.push('require.install({');
     var moduleEntries = [];
     for (var path in m._modules) {
         var module = m._modules[path];
@@ -19,7 +19,9 @@ m.ready(function () {
             );
     }
     packedCode.push(moduleEntries.join(',\n'));
-    packedCode.push('});\n');
+    packedCode.push('});');
 
-    console.log(packedCode.join('\n'));
+    packedCode.push('require("/root")');
+
+    console.log(packedCode.join('\n') + '\n');
 });
