@@ -123,7 +123,7 @@ Importer.prototype = new function () {
         renderOperation.write('var ' + name + ' = require(' + JSON.stringify(path) + ');\n');
     };
     this.importModule = function (processor, filename, renderOperation, path) {
-        this.importModuleAs(renderOperation, path, path.match(/[^\/]+$/)[0]);
+        this.importModuleAs(processor, filename, renderOperation, path, path.match(/[^\/]+$/)[0]);
     };
 }();
 
