@@ -15,7 +15,7 @@ m.ready(function () {
         var module = m._modules[path];
         var modularizedCode = 'function (require, exports, module) {\n' + module.code + '}'
         moduleEntries.push("  " + JSON.stringify(path) + ": " +
-            modularizedCode.replace(/\n/g, "\n    ")
+            modularizedCode.replace(/\n([^\n])/g, "\n    $1")
             );
     }
     packedCode.push(moduleEntries.join(',\n'));
